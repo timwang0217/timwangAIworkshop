@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TimWang的AI工作坊</title>
+  <meta name="description" content="TimWang 的 AI 工作坊 | 極簡一頁式網站">
+  <style>
+    :root{
+      --bg: #fff;
+      --fg: #111;
+      --muted:#666;
+      --border:#e5e7eb;
+      --accent:#2563eb;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#0b0f14;
+        --fg:#edf2f7;
+        --muted:#9aa6b2;
+        --border:#1f2937;
+        --accent:#60a5fa;
+      }
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,"Noto Sans TC","Apple Color Emoji","Segoe UI Emoji";}
+    a{color:var(--accent);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .container{max-width:920px;margin:0 auto;padding:48px 20px}
+    header{padding:56px 0 24px;border-bottom:1px solid var(--border);}
+    h1{font-size:clamp(28px,5vw,44px);margin:0 0 8px}
+    .subtitle{color:var(--muted);margin:0;font-size:clamp(14px,2.5vw,18px)}
+    section{padding:28px 0;border-bottom:1px solid var(--border);}
+    h2{font-size:22px;margin:0 0 8px}
+    p{margin:8px 0 0}
+    ul{margin:12px 0 0 20px}
+    code,pre{background:rgba(127,127,127,.07);border:1px solid var(--border);border-radius:8px}
+    pre{padding:14px;overflow:auto}
+    footer{padding:28px 0;color:var(--muted);font-size:14px}
+    .pill{display:inline-block;border:1px solid var(--border);padding:4px 10px;border-radius:999px;font-size:12px;color:var(--muted);}
+    .grid{display:grid;gap:14px}
+    @media(min-width:720px){.grid{grid-template-columns:1fr 1fr}}
+    .btn{display:inline-block;padding:10px 14px;border:1px solid var(--border);border-radius:10px}
+    .top{position:fixed;right:16px;bottom:16px;border:1px solid var(--border);background:var(--bg);padding:10px 12px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="pill">Workshop</span>
+      <h1>TimWang的AI工作坊</h1>
+      <p class="subtitle">by <strong>TimWang</strong></p>
+    </header>
+
+    <section id="intro">
+      <h2>關於工作坊</h2>
+      <p>這是一個極簡的一頁式網站樣板，方便快速部署到 GitHub Pages。內容區塊可自由增刪、以純 HTML 編輯。</p>
+      <p>目前先與範例結構一致；之後可替換文案與模組，維持相同版面與風格。</p>
+    </section>
+
+    <section id="agenda">
+      <h2>課程大綱（示意）</h2>
+      <div class="grid">
+        <div>
+          <p><strong>Part 1</strong> · 生成式 AI 基礎</p>
+          <ul>
+            <li>Prompt 設計心法</li>
+            <li>多模態入門：文字 × 圖像 × 語音</li>
+          </ul>
+        </div>
+        <div>
+          <p><strong>Part 2</strong> · 實戰應用</p>
+          <ul>
+            <li>商務簡報與腳本</li>
+            <li>行銷素材與自動化</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="prompts">
+      <h2>AI 提示詞範本（示意）</h2>
+<pre><code>你是專業講師，請用淺顯易懂的方式，
+以「目標 → 步驟 → 範例 → 常見錯誤」結構，
+教會零基礎學員在 20 分鐘內完成第一個 AI 小作品。</code></pre>
+    </section>
+
+    <section id="signup">
+      <h2>報名與聯絡（示意）</h2>
+      <p>信箱：<a href="mailto:hello@example.com">hello@example.com</a>　｜　表單：<a href="#" aria-disabled="true">即將開放</a></p>
+    </section>
+
+    <footer>
+      <p>© <span id="year"></span> TimWang. All rights reserved.</p>
+    </footer>
+  </div>
+  <a class="top" href="#intro" aria-label="Back to top">↑</a>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
