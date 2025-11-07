@@ -1,0 +1,850 @@
+AI魔法師 圖片生成 程式碼
+
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+// --- Icon Components ---
+const ChevronDown = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><polyline points="6 9 12 15 18 9"></polyline></svg>;
+const XIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+const WandIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 4V2m0 14v-2m-7.5-1.5L6 13m-2.2 4.8L2 16m12.5-10.5L13 6m4.8-2.2L16 2M4 9H2m14 0h-2m-5.5 5.5L10 13m-2.2 4.8L6 16m9-1.5l1.5 1.5M18 22l-3-3m3 3l3-3m-3 3v-3m-9-4a3 3 0 0 0 0 6h6a3 3 0 0 0 0-6h-6Z"/></svg>;
+const DownloadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
+const RefreshIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>;
+const ClipboardIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>;
+const LightbulbIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-300 flex-shrink-0"><path d="M15.09 16.05A6.49 6.49 0 0 1 8.95 9.91a6.5 6.5 0 0 1 6.14-5.91A6.5 6.5 0 1 0 15.09 16.05Z"></path><path d="M9 16v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2"></path><path d="M12 2v2"></path></svg>;
+const ShieldCheckIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>;
+
+// --- 風格資料庫 ---
+const artStyles = [
+  { name: '巴洛克光影', en: 'Baroque, Chiaroscuro, dramatic lighting', img: 'https://placehold.co/400x600/38220f/e0cda7?text=Baroque' },
+  { name: '3D皮克斯風格', en: 'Pixar 3D style, animation, vibrant colors', img: 'https://placehold.co/400x600/007acc/ffffff?text=Pixar' },
+  { name: '水墨國畫風格', en: 'Chinese ink wash painting style, traditional art', img: 'https://placehold.co/400x600/f0f0f0/262626?text=Ink+Wash' },
+  { name: '印象派風格', en: 'Impressionism, visible brushstrokes, light and color', img: 'https://placehold.co/400x600/adc9ff/1c3d73?text=Impressionism' },
+  { name: '浮世繪風格', en: 'Ukiyo-e style, Japanese woodblock prints', img: 'https://placehold.co/400x600/f5e4c3/a62c3e?text=Ukiyo-e' },
+  { name: '梵谷風格', en: 'In the style of Vincent van Gogh, post-impressionism, swirling brushstrokes', img: 'https://placehold.co/400x600/0033cc/ffff00?text=Van+Gogh' },
+  { name: '復古海報風格', en: 'Vintage poster style, retro design', img: 'https://placehold.co/400x600/d4a373/3a3a3a?text=Vintage' },
+  { name: '普普藝術風格', en: 'Pop Art style, bold colors, comic book style', img: 'https://placehold.co/400x600/e60000/ffff00?text=Pop+Art' },
+  { name: '超現實主義風格', en: 'Surrealism, dreamlike, strange and illogical scenes', img: 'https://placehold.co/400x600/009999/ffffff?text=Surrealism' },
+  { name: '黃金時代插畫風', en: 'Golden Age of Illustration style', img: 'https://placehold.co/400x600/b38600/ffffff?text=Golden+Age' },
+  { name: '裝飾藝術風格', en: 'Art Deco style, geometric shapes, luxurious', img: 'https://placehold.co/400x600/0d0d0d/ffd700?text=Art+Deco' },
+  { name: '蒸汽龐克風格', en: 'Steampunk style, gears, Victorian era, steam-powered machinery', img: 'https://placehold.co/400x600/663300/e6e6e6?text=Steampunk' },
+  { name: '穆夏風格', en: 'In the style of Alphonse Mucha, Art Nouveau', img: 'https://placehold.co/400x600/e6b800/262626?text=Mucha' },
+  { name: '賽博龐克風格', en: 'Cyberpunk style, neon lights, futuristic city, high tech low life', img: 'https://placehold.co/400x600/0d0221/00f0ff?text=Cyberpunk' },
+  { name: '攝影寫實藝術風格', en: 'Photorealistic style, hyperrealism, high detail', img: 'https://placehold.co/400x600/e0e0e0/1a1a1a?text=Photorealistic' },
+];
+
+// --- 大師級品質提示詞增強器 (更新) ---
+const styleEnhancers = {
+    'default': 'masterpiece, best quality, highly detailed, intricate details, cinematic lighting, trending on ArtStation, 8K',
+    '巴洛克光影': 'in the style of Caravaggio and Rembrandt, tenebrism, dramatic shadows, rich textures, intense emotional depth, high contrast',
+    '3D皮克斯風格': 'Pixar animation studio style, masterpiece, rendered in RenderMan, cinematic lighting, vibrant color palette, highly detailed, intricate textures, subsurface scattering, charming and expressive stylized characters, heartwarming and whimsical atmosphere',
+    '水墨國畫風格': 'in the style of Zhang Daqian, minimalist, expressive sumi-e brushstrokes, wabi-sabi aesthetic, on rice paper texture',
+    '印象派風格': 'in the style of Monet, capturing the fleeting moment, broken color, impasto brushwork, natural light, plein air painting',
+    '浮世繪風格': 'in the style of Hokusai and Hiroshige, flat areas of color, bold outlines, asymmetrical compositions, decorative patterns',
+    '梵谷風格': 'thick impasto, swirling brushstrokes, vibrant and emotional use of color, dynamic energy, post-impressionist masterpiece',
+    '復古海報風格': 'vintage lithograph print, retro color palette, textured paper, graphic design elements from the 1950s',
+    '普普藝術風格': 'in the style of Andy Warhol and Roy Lichtenstein, Ben-Day dots, bold outlines, vibrant flat colors, mass-produced look',
+    '超現實主義風格': 'in the style of Salvador Dalí and René Magritte, juxtaposition of unexpected objects, dreamlike logic, bizarre landscapes',
+    '黃金時代插畫風': 'in the style of Arthur Rackham and N.C. Wyeth, detailed line work, rich color palette, narrative quality, classic storybook feel',
+    '裝飾藝術風格': 'in the style of Erté and Cassandre, sleek geometric forms, lavish ornamentation, strong lines, streamlined elegance',
+    '蒸汽龐克風格': 'intricate gears and cogs, polished brass and copper, Victorian aesthetics, steam-powered technology, detailed mechanical parts',
+    '穆夏風格': 'sensuous lines, stylized hair, delicate pastel colors, ornate decorative borders, beautiful women in flowing gowns, Art Nouveau masterpiece',
+    '賽博龐克風格': 'Blade Runner aesthetic, neon-drenched rainy streets, holographic advertisements, volumetric lighting, moody, gritty realism',
+    '攝影寫實藝術風格': 'award-winning photorealistic portrait, masterpiece, ultra realistic, shot on Fujifilm GFX 100 with 110mm F2 lens, detailed skin texture with natural imperfections (pores, freckles, slight blemishes), subtle facial asymmetry, soft natural window light, cinematic color grading, subtle film grain, conveys a deep authentic emotion'
+};
+
+
+// --- 資料結構 (全面更新) ---
+const promptModules = {
+  person: {
+    title: '人 (Person)',
+    options: {
+      characterCount: { title: '人物數量', description: '決定畫面中出現的主要人物數量。', type: 'radio', default: 1, items: [1, 2, 3] },
+      gender: { title: '性別', description: '設定角色的生理性別特徵。', type: 'dropdown', default: '不指定', items: ['男性', '女性', '不指定'], en: {'男性': 'a man', '女性': 'a woman', '不指定': ''}, custom: true, placeholder: '選擇或輸入性別...' },
+      age: { title: '年齡層', description: '設定角色的視覺年齡。', type: 'dropdown', default: '成人', items: ['孩童', '青少年', '青年', '成人', '中年', '老年'], en: {'孩童': 'child', '青少年': 'teenager', '青年': 'young adult', '成人': 'adult', '中年': 'middle-aged', '老年': 'elderly'}, custom: true, placeholder: '選擇或輸入年齡...' },
+      role: { title: '角色定位', description: '角色的職業、身份或奇幻設定。', type: 'dropdown', placeholder: '選擇或輸入角色...', items: ['學生', '老師', '商務人士', '模特', '舞者', '科學家', '藝術家', '精靈', '騎士', '巫師', '機器人', '超級英雄'], custom: true },
+      hairStyle: { title: '髮型', description: '角色的髮型外觀。', type: 'dropdown', placeholder: '選擇或輸入髮型...', items: ['長直髮', '長捲髮', '短髮', '龐克頭', '辮子'], custom: true },
+      hairColor: { title: '髮色', description: '角色的頭髮顏色。', type: 'dropdown', placeholder: '選擇或輸入髮色...', items: ['黑色', '棕色', '金色', '紅色', '銀白色'], custom: true },
+      skinColor: { title: '膚色', description: '角色的皮膚顏色。', type: 'dropdown', placeholder: '選擇或輸入膚色...', items: ['白皙', '健康小麥色', '古銅色', '深棕色'], custom: true },
+      eyes: { title: '眼睛', description: '角色的眼睛顏色或特徵。', type: 'dropdown', placeholder: '選擇或輸入眼睛特徵...', items: ['藍眼睛', '綠眼睛', '棕色眼睛', '鳳眼'], custom: true },
+      accessories: { title: '飾配件 (≤4)', description: '角色穿戴的飾品或配件。', type: 'tags', limit: 4, placeholder: '新增飾品配件...', items: ['眼鏡', '帽子', '項鍊', '耳環', '手錶', '圍巾'] },
+      expression: { title: '表情', description: '角色的臉部情緒表達。', type: 'dropdown', default: '微笑', items: ['微笑', '嚴肅', '自信', '悲傷', '驚訝'], en: {'微笑': 'smiling', '嚴肅': 'serious expression', '自信': 'confident expression', '悲傷': 'sad expression', '驚訝': 'surprised expression'}, custom: true },
+      pose: { title: '姿態', description: '角色的身體姿勢。', type: 'dropdown', default: '站立', items: ['站立', '坐著', '走路', '跑步', '揮手', '跳舞'], en: {'站立': 'standing', '坐著': 'sitting', '走路': 'walking', '跑步': 'running', '揮手': 'waving', '跳舞': 'dancing'}, custom: true },
+    }
+  },
+  object: {
+    title: '物 (Object)',
+    options: {
+      objectCount: { title: '物品數量', description: '決定畫面中出現的關鍵物品數量。', type: 'radio', default: 1, items: [1, 2, 3] },
+      name: { title: '主題名稱', description: '具體描述物品的名稱與樣貌。', type: 'text', placeholder: '例: 紅色雨傘、陶瓷咖啡杯' },
+      type: { title: '主題類型 (≤3)', description: '物品的分類，例如動物、植物等。', type: 'tags', limit: 3, placeholder: '新增類型...', items: ['動物', '植物', '產品', '食物', '交通工具', '符號', '家具', '樂器'] },
+      features: { title: '特徵', description: '物品的材質、風格或狀態。', type: 'tags', placeholder: '新增特徵...', items: ['復古', '金屬', '木製', '透明', '巨大', '迷你', '發光的'] },
+    }
+  },
+  scene: {
+    title: '境 (Scene)',
+    options: {
+      category: { title: '場景類別', description: '選擇場景的大致分類，例如室內或戶外。', type: 'dropdown', placeholder: '選擇類別...', items: ['室內', '戶外', '城市', '自然', '幻想', '科幻', '歷史', '棚拍'], custom: true },
+      specific: { title: '具體場景', description: '更明確的地點或環境。', type: 'dropdown', placeholder: '選擇或輸入場景...', items: ['咖啡廳', '圖書館', '森林', '海灘', '賽博龐克都市', '太空站', '古城堡'], custom: true },
+      time: { title: '時間/季節', description: '故事發生的時間點或季節感。', type: 'dropdown', placeholder: '選擇時間...', items: ['清晨', '黃昏', '夜晚', '白天', '春夏', '秋冬', 'Golden Hour', 'Blue Hour'], custom: true },
+      weather: { title: '天氣/環境', description: '場景中的天氣狀況。', type: 'dropdown', placeholder: '選擇天氣...', items: ['晴天', '多雲', '雨天', '下雪', '有霧', '暴風雨', '霓虹雨'], custom: true },
+      atmosphere: { title: '氛圍 (≤8)', description: '營造畫面的整體情緒與感覺。', type: 'tags', limit: 8, placeholder: '新增氛圍...', items: ['浪漫', '神秘', '舒適', '夢幻', '電影感', '懷舊', '未來感', '史詩感'] },
+    }
+  },
+  advanced: {
+    title: '進階設定',
+    options: {
+      drawingTechnique: { title: '藝術媒材與技法 (≤8)', description: '選擇繪畫的材質與表現方式，例如油畫、水彩或數位繪圖。', type: 'tags', limit: 8, placeholder: '新增技法...', items: ['油畫', '水彩', '素描', '壓克力', '粉彩', '版畫', '數位繪畫', '浮世繪', '敦煌壁畫', '3D動畫'], en: {'3D動畫': '3D animation'} },
+      composition: { title: '畫面構圖與視角 (≤8)', description: '安排畫面元素的結構與觀看角度，例如三分法或鳥瞰視角。', type: 'tags', limit: 8, placeholder: '新增構圖...', items: ['三分法', '黃金比例', '對稱', '不對稱', '引導線', '框中框', '鳥瞰', '仰角', '特寫', '負空間'] },
+      photography: { title: '光影與鏡頭效果 (≤8)', description: '模擬攝影中的光線與特殊鏡頭效果，創造特定氛圍。', type: 'tags', limit: 8, placeholder: '新增技巧...', items: ['景深', '長曝光', '動態模糊', '散景', '逆光', '剪影', '輪廓光', '廣角', '微距', '魚眼'] },
+    }
+  },
+  output: {
+    title: '輸出設定',
+    options: {
+      aspectRatio: { title: '長寬比', description: '設定最終生成圖片的寬高比例。', type: 'dropdown', default: '9:16', items: ['9:16', '16:9', '1:1', '4:3', '3:2'], custom: false, placeholder: '選擇長寬比...' },
+      textOverlay: { title: '文字選項 (英文)', description: '決定是否在圖片上添加文字。', type: 'radio', default: '不加文字', items: ['AI自動生成', '不加文字', '自行撰寫'] },
+      customText: { title: '自訂文字', description: '請輸入您想添加的英文文字。', type: 'text', placeholder: 'Enter English text...' },
+    }
+  }
+};
+
+const createDefaultCharacter = () => {
+    const personOptions = promptModules.person.options;
+    return {
+        gender: personOptions.gender.default, age: personOptions.age.default,
+        role: '', hairStyle: '', hairColor: '', skinColor: '', eyes: '',
+        accessories: [], expression: personOptions.expression.default,
+        pose: personOptions.pose.default, isGenerating: false,
+    };
+};
+const createDefaultObject = () => ({
+    name: '',
+    type: [],
+    features: [],
+    isGenerating: false,
+});
+
+const parseJsonResponse = (text) => {
+    try {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+        return JSON.parse(text);
+    } catch (e) {
+        console.error("JSON parsing error:", e);
+        return null;
+    }
+};
+
+// --- AI 建議生成函式 ---
+const getAiCharacterSuggestions = async (role) => {
+    const apiKey = "AIzaSyADZoa5YJ3QNiAjOVY5FEZ2HPnjaA47V9Y";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+    const prompt = `為一個角色「${role}」建議一個典型的髮型、髮色、膚色、眼睛特徵、飾配件(最多4個)、表情和姿態。請只用繁體中文回答一個 JSON 物件，不要包含任何 \`\`\`json \`\`\` 標記或其他文字。JSON 結構如下: { "hairStyle": "...", "hairColor": "...", "skinColor": "...", "eyes": "...", "accessories": ["..."], "expression": "...", "pose": "..." }`;
+
+    const payload = { contents: [{ parts: [{ text: prompt }] }] };
+    try {
+        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+        const result = await response.json();
+        const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (jsonText) return parseJsonResponse(jsonText);
+        throw new Error("Invalid response from API");
+    } catch (error) { console.error("AI 角色建議生成失敗:", error); return null; }
+};
+
+const getAiObjectSuggestions = async (objectName) => {
+    const apiKey = "AIzaSyADZoa5YJ3QNiAjOVY5FEZ2HPnjaA47V9Y";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+    const prompt = `為一個物品「${objectName}」建議一個主題類型(最多3個)和一些相關的特徵。請只用繁體中文回答一個 JSON 物件，不要包含任何 \`\`\`json \`\`\` 標記或其他文字。JSON 結構如下: { "type": ["..."], "features": ["..."] }`;
+
+    const payload = { contents: [{ parts: [{ text: prompt }] }] };
+    try {
+        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+        const result = await response.json();
+        const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (jsonText) return parseJsonResponse(jsonText);
+        throw new Error("Invalid response from API");
+    } catch (error) { console.error("AI 物品建議生成失敗:", error); return null; }
+};
+
+const getAiSceneSuggestions = async (sceneCategory) => {
+    const apiKey = "AIzaSyADZoa5YJ3QNiAjOVY5FEZ2HPnjaA47V9Y";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+    const prompt = `為一個場景類別「${sceneCategory}」建議一個具體的場景、時間/季節、天氣/環境、以及氛圍(最多8個)。請只用繁體中文回答一個 JSON 物件，不要包含任何 \`\`\`json \`\`\` 標記或其他文字。JSON 結構如下: { "specific": "...", "time": "...", "weather": "...", "atmosphere": ["..."] }`;
+
+    const payload = { contents: [{ parts: [{ text: prompt }] }] };
+    try {
+        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+        const result = await response.json();
+        const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (jsonText) return parseJsonResponse(jsonText);
+        throw new Error("Invalid response from API");
+    } catch (error) { console.error("AI 場景建議生成失敗:", error); return null; }
+};
+
+const getAiTextSuggestion = async (theme) => {
+    if (!theme || theme.trim() === '') return null;
+    const apiKey = "AIzaSyADZoa5YJ3QNiAjOVY5FEZ2HPnjaA47V9Y";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+    const prompt = `Based on the theme "${theme}", generate a short, artistic, and relevant title or phrase in English (max 5 words) to be overlaid on the image. Respond with a single JSON object like {"text": "Your suggested text"}. Do not include any other text or markdown.`;
+
+    const payload = { contents: [{ parts: [{ text: prompt }] }] };
+    try {
+        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!response.ok) throw new Error(`API request failed: ${response.status}`);
+        const result = await response.json();
+        const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (jsonText) {
+            const parsed = parseJsonResponse(jsonText);
+            return parsed?.text || null;
+        }
+        throw new Error("Invalid response from API for text suggestion");
+    } catch (error) {
+        console.error("AI 文字建議生成失敗:", error);
+        return null;
+    }
+};
+
+
+const getAiGlobalSuggestions = async (theme, style) => {
+    const apiKey = "AIzaSyADZoa5YJ3QNiAjOVY5FEZ2HPnjaA47V9Y";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+    const prompt = `根據以下主題和藝術風格，生成一個詳細的 AI 圖像提示詞設定。
+主題：「${theme}」
+藝術風格：「${style.name} (${style.en})」
+
+請完全沉浸在「${style.name}」的風格中進行聯想。例如，如果風格是賽博龐克，人物可能是改造人，場景可能是霓虹雨夜的都市。如果風格是浮世繪，構圖和用色都要有相應的特色。
+請只用繁體中文回答一個 JSON 物件，不要包含任何 \`\`\`json \`\`\` 標記或其他文字。人數隨機決定 1 到 2 位。物品數量隨機決定 1 到 2 個。在 'advanced' 設定中，請根據所選風格推薦合適的繪圖技法、構圖和攝影技巧。
+
+JSON 結構如下:
+{
+    "person": { "characterCount": number, "characters": [ { "gender": string, "age": string, "role": string, "hairStyle": string, "hairColor": string, "skinColor": string, "eyes": string, "accessories": [string], "expression": string, "pose": string } ] },
+    "object": { "objectCount": number, "objects": [ { "type": [string], "name": string, "features": [string] } ] },
+    "scene": { "category": string, "specific": string, "time": string, "weather": string, "atmosphere": [string] },
+    "advanced": { "drawingTechnique": [string], "composition": [string], "photography": [string] },
+    "output": { "aspectRatio": string }
+}`;
+
+    const payload = { contents: [{ parts: [{ text: prompt }] }] };
+    try {
+        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!response.ok) throw new Error(`API request failed: ${response.status}`);
+        const result = await response.json();
+        const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (jsonText) return parseJsonResponse(jsonText);
+        throw new Error("Invalid response from API");
+    } catch (error) { console.error("全域 AI 建議生成失敗:", error); return null; }
+};
+
+// --- API 呼叫函式 ---
+const fetchWithRetry = (url, options, retries = 3, backoff = 1000) => {
+    return new Promise((resolve, reject) => {
+        const attempt = async (retryCount, delay) => {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) {
+                    if (response.status === 429 || response.status >= 500) {
+                        if (retryCount > 0) setTimeout(() => attempt(retryCount - 1, delay * 2), delay);
+                        else reject(new Error(`API 請求失敗: ${response.status}`));
+                    } else reject(new Error(`API 請求失敗: ${response.status}`));
+                } else resolve(response.json());
+            } catch (error) {
+                if (retryCount > 0) setTimeout(() => attempt(retryCount - 1, delay * 2), delay);
+                else reject(error);
+            }
+        };
+        attempt(retries, backoff);
+    });
+};
+
+const generateImagesAPI = async (prompt, sampleCount) => {
+    const apiKey = "AIzaSyADZoa5YJ3QNiAjOVY5FEZ2HPnjaA47V9Y";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+
+    const promises = Array.from({ length: sampleCount }, (_, i) => {
+        const finalApiPrompt = `${prompt} // seed ${Math.floor(Math.random() * 1000000)}`;
+
+        const payload = {
+            contents: [{ parts: [{ text: finalApiPrompt }] }],
+            generationConfig: { 
+                responseModalities: ['IMAGE'],
+            },
+        };
+        return fetchWithRetry(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+            .then(result => {
+                const base64Data = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+                return base64Data ? `data:image/png;base64,${base64Data}` : null;
+            });
+    });
+    try {
+        const results = await Promise.all(promises);
+        const successfulImages = results.filter(img => img !== null);
+        if (successfulImages.length === 0) throw new Error("API 未返回任何有效圖片資料。");
+        return successfulImages;
+    } catch (error) { console.error("圖片生成失敗:", error); throw error; }
+};
+
+// --- UI 組件 ---
+const TeacherGuide = ({ text }) => (
+    <div className="bg-yellow-500/10 border-l-4 border-yellow-400 text-yellow-200 p-4 rounded-r-lg mb-6 flex items-start gap-4">
+        <LightbulbIcon />
+        <div>
+            <p className="font-bold">TONY楊老師的指引</p>
+            <p className="text-sm text-yellow-300/90">{text}</p>
+        </div>
+    </div>
+);
+const IntellectualPropertyNotice = () => (
+    <motion.div 
+        initial={{ opacity: 0, y: 20 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="bg-gray-900/70 border-2 border-yellow-400/50 rounded-2xl p-6 sm:p-8 my-12 shadow-lg max-w-4xl mx-auto"
+    >
+        <div className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-6">
+            <div className="flex-shrink-0">
+                 <ShieldCheckIcon />
+            </div>
+            <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-yellow-400 mb-2">TONY楊老師的教學框架與智慧財產權</h3>
+                <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
+                    這套AI生圖提示詞產生器，不僅是一個工具，它更融合了TONY楊老師多年在品牌行銷、設計美學與AI創作領域的實戰經驗，所淬鍊出的一套獨特教學方法與學習框架。我們鼓勵您盡情發揮創意，跟隨老師的指引探索AI的無限可能。同時，也請尊重這份框架背後的智慧財產權。這套系統的結構、流程與指引內容，皆為TONY老師原創教學核心的一部分。期待您在這裡不僅學會詠唱魔法的咒語，更能建立屬於自己的創作思維。讓我們一起在AI的魔法世界中，快樂學習，不斷成長！
+                </p>
+            </div>
+        </div>
+    </motion.div>
+);
+const ModuleCard = ({ title, children }) => (<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 shadow-lg"><h3 className="text-lg sm:text-xl font-bold text-yellow-400 mb-5 border-b-2 border-yellow-400/20 pb-2">{title}</h3><div className="space-y-6 relative">{children}</div></motion.div>);
+const FieldWrapper = ({ title, description, children }) => (<div><label className="text-sm sm:text-base font-semibold text-gray-300 mb-1 block">{title}</label>{description && <p className="text-xs text-gray-400 mb-2">{description}</p>}{children}</div>);
+const RadioGroup = ({ items, selected, onChange }) => (<div className="flex flex-wrap gap-2">{items.map(item => (<button key={item} onClick={() => onChange(item)} className={`px-4 py-2 text-sm font-semibold rounded-full transition-all duration-200 ease-in-out transform hover:scale-105 ${selected === item ? 'bg-yellow-400 text-black shadow-md' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}>{item}</button>))}</div>);
+const Dropdown = ({ items, selected, onChange, placeholder, custom }) => {
+    const [isOpen, setIsOpen] = useState(false); const [customValue, setCustomValue] = useState(''); const dropdownRef = useRef(null);
+    useEffect(() => { const handleClickOutside = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setIsOpen(false); }; document.addEventListener("mousedown", handleClickOutside); return () => document.removeEventListener("mousedown", handleClickOutside); }, []);
+    const handleSelect = (item) => { onChange(item); setIsOpen(false); };
+    const handleCustomSubmit = (e) => { if (e.key === 'Enter' && customValue.trim()) { handleSelect(customValue.trim()); setCustomValue(''); } };
+    return (<div className="relative" ref={dropdownRef}><button onClick={() => setIsOpen(!isOpen)} className="w-full bg-gray-900/70 border border-gray-600 rounded-lg py-2 px-4 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-yellow-500"><span className={selected ? 'text-white' : 'text-gray-400'}>{selected || placeholder}</span><ChevronDown /></button><AnimatePresence>{isOpen && (<motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">{items.map(item => <a key={item} onClick={() => handleSelect(item)} className="block px-4 py-2 text-white hover:bg-yellow-500/20 cursor-pointer">{item}</a>)}{custom && <input type="text" value={customValue} onChange={(e) => setCustomValue(e.target.value)} onKeyDown={handleCustomSubmit} placeholder="輸入自訂值後按 Enter" className="w-full bg-gray-900 px-4 py-2 border-t border-gray-700 focus:outline-none text-white placeholder-gray-500"/>}</motion.div>)}</AnimatePresence></div>);
+};
+const TagInput = ({ items = [], selected = [], onChange, placeholder, limit }) => {
+    const [inputValue, setInputValue] = useState(''); const [showDropdown, setShowDropdown] = useState(false); const inputRef = useRef(null); const hasReachedLimit = limit && selected.length >= limit;
+    const handleSelect = (tag) => { if (!selected.includes(tag) && !hasReachedLimit) { onChange([...selected, tag]); } setInputValue(''); setShowDropdown(false); };
+    const handleRemove = (tag) => { onChange(selected.filter(t => t !== tag)); };
+    const handleKeyDown = (e) => { if (e.key === 'Enter' && inputValue.trim() && !hasReachedLimit) { e.preventDefault(); handleSelect(inputValue.trim()); } };
+    const filteredItems = items.filter(i => i.toLowerCase().includes(inputValue.toLowerCase()) && !selected.includes(i));
+    return (<div><div className="flex flex-wrap gap-2 mb-2">{Array.isArray(selected) && selected.map(tag => (<motion.div key={tag} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="bg-yellow-400 text-black text-sm font-semibold px-3 py-1 rounded-full flex items-center gap-2"><span>{tag}</span><button onClick={() => handleRemove(tag)} className="bg-black/20 rounded-full p-0.5 hover:bg-black/40"><XIcon/></button></motion.div>))}</div><div className="relative"><input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onFocus={() => setShowDropdown(true)} onBlur={() => setTimeout(() => setShowDropdown(false), 150)} onKeyDown={handleKeyDown} placeholder={hasReachedLimit ? '已達數量上限' : placeholder} disabled={hasReachedLimit} className="w-full bg-gray-900/70 border border-gray-600 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-white placeholder-gray-500 transition-all disabled:bg-gray-800"/>{showDropdown && filteredItems.length > 0 && (<div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">{filteredItems.map(item => (<a key={item} onMouseDown={() => handleSelect(item)} className="block px-4 py-2 text-white hover:bg-yellow-500/20 cursor-pointer">{item}</a>))}</div>)}</div>{hasReachedLimit && <p className="text-red-400 text-xs mt-1">最多選擇 {limit} 項。</p>}</div>);
+};
+const StyleSelector = ({ selectedStyle, onSelect }) => (
+    <div>
+      <h3 className="text-lg sm:text-xl font-bold text-yellow-300 mb-4"><span className="bg-yellow-400 text-black rounded-full px-3 py-1 mr-2 font-bold">2</span> 選擇風格 (Select Style)</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+        {artStyles.map(style => (
+          <motion.div key={style.name} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+            onClick={() => onSelect(style)}
+            className={`relative rounded-lg overflow-hidden cursor-pointer aspect-[2/3] border-4 transition-all duration-300 ${selectedStyle?.name === style.name ? 'border-yellow-400 shadow-2xl shadow-yellow-500/30' : 'border-transparent hover:border-yellow-500/50'}`}>
+            <img src={style.img} alt={style.name} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+            <p className="absolute bottom-2 left-2 right-2 text-center text-white font-bold text-sm">{style.name}</p>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+
+// --- 主應用程式 ---
+const App = () => {
+    // 初始化狀態
+    const initializeState = () => {
+        const state = {};
+        ['person', 'object', 'scene', 'advanced', 'output'].forEach(module => {
+            state[module] = {};
+            for (const option in promptModules[module].options) {
+                state[module][option] = promptModules[module].options[option].type === 'tags' ? [] : (promptModules[module].options[option].default || '');
+            }
+        });
+        state.person = { characterCount: 1, characters: [createDefaultCharacter()] };
+        state.object = { objectCount: 1, objects: [createDefaultObject()] };
+        state.scene.isGenerating = false;
+        state.output.customText = ''; // 新增
+        state.output.isGeneratingText = false; // 新增
+        return state;
+    };
+    const [selections, setSelections] = useState(initializeState);
+    const [mainTheme, setMainTheme] = useState('');
+    const [selectedStyle, setSelectedStyle] = useState(null);
+    const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+    const [finalPrompt, setFinalPrompt] = useState('');
+    const [finalPromptZh, setFinalPromptZh] = useState('');
+    const [generatedImages, setGeneratedImages] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [copySuccess, setCopySuccess] = useState('');
+    const [regeneratingIndex, setRegeneratingIndex] = useState(null);
+    const objectNameInputDebounce = useRef(null);
+    
+    // 處理一般狀態變更
+    const handleStateChange = (module, option, value, index = null) => {
+        // AI 角色智慧建議觸發
+        if (module === 'person' && option === 'role' && index !== null) {
+            const currentRole = selections.person.characters[index].role;
+            if (value && value !== currentRole) {
+                setSelections(prev => {
+                    const newCharacters = [...prev.person.characters];
+                    newCharacters[index] = { ...newCharacters[index], role: value, isGenerating: true };
+                    return { ...prev, person: { ...prev.person, characters: newCharacters } };
+                });
+                getAiCharacterSuggestions(value).then(suggestions => {
+                    if (suggestions) {
+                        setSelections(prev => {
+                            const newCharacters = [...prev.person.characters];
+                            const currentCharacter = newCharacters[index];
+                            if (currentCharacter) {
+                                newCharacters[index] = { ...currentCharacter, ...suggestions, accessories: Array.isArray(suggestions.accessories) ? suggestions.accessories : currentCharacter.accessories, isGenerating: false };
+                            }
+                            return { ...prev, person: { ...prev.person, characters: newCharacters } };
+                        });
+                    } else {
+                        setSelections(prev => {
+                            const newCharacters = [...prev.person.characters];
+                            if(newCharacters[index]) newCharacters[index].isGenerating = false;
+                            return { ...prev, person: { ...prev.person, characters: newCharacters } };
+                        });
+                    }
+                });
+                return;
+            }
+        }
+        
+        // AI 物品智慧建議觸發
+        if (module === 'object' && option === 'name' && index !== null) {
+            setSelections(prev => { const newObjects = [...prev.object.objects]; if (newObjects[index]) newObjects[index] = { ...newObjects[index], name: value }; return { ...prev, object: { ...prev.object, objects: newObjects } }; });
+            if (objectNameInputDebounce.current) clearTimeout(objectNameInputDebounce.current);
+            objectNameInputDebounce.current = setTimeout(() => {
+                if (value && value.trim() !== '') {
+                    setSelections(prev => { const newObjects = [...prev.object.objects]; if (newObjects[index]) newObjects[index].isGenerating = true; return { ...prev, object: { ...prev.object, objects: newObjects } }; });
+                    getAiObjectSuggestions(value).then(suggestions => {
+                        if (suggestions) {
+                            setSelections(prev => {
+                                const newObjects = [...prev.object.objects];
+                                const currentObject = newObjects[index];
+                                if(currentObject){ newObjects[index] = { ...currentObject, type: Array.isArray(suggestions.type) ? suggestions.type : currentObject.type, features: Array.isArray(suggestions.features) ? suggestions.features : currentObject.features, isGenerating: false }; }
+                                return { ...prev, object: { ...prev.object, objects: newObjects } };
+                            });
+                        } else {
+                            setSelections(prev => { const newObjects = [...prev.object.objects]; if (newObjects[index]) newObjects[index].isGenerating = false; return { ...prev, object: { ...prev.object, objects: newObjects } }; });
+                        }
+                    });
+                }
+            }, 800);
+            return;
+        }
+
+        // AI 場景智慧建議觸發
+        if (module === 'scene' && option === 'category') {
+            const currentCategory = selections.scene.category;
+            if (value && value !== currentCategory) {
+                setSelections(prev => ({ ...prev, scene: { ...prev.scene, category: value, isGenerating: true } }));
+                getAiSceneSuggestions(value).then(suggestions => {
+                    setSelections(prev => ({ ...prev, scene: { ...prev.scene, ...(suggestions || {}), atmosphere: Array.isArray(suggestions?.atmosphere) ? suggestions.atmosphere : prev.scene.atmosphere, isGenerating: false }}));
+                });
+                return; 
+            }
+        }
+
+        // AI 文字建議觸發
+        if (module === 'output' && option === 'textOverlay' && value === 'AI自動生成') {
+            setSelections(prev => ({ ...prev, output: { ...prev.output, textOverlay: value, isGeneratingText: true } }));
+            getAiTextSuggestion(mainTheme).then(text => {
+                setSelections(prev => ({ ...prev, output: { ...prev.output, customText: text || 'Creative Idea', isGeneratingText: false } }));
+            });
+            return;
+        }
+        
+        // 一般狀態更新
+        setSelections(prev => {
+            const newSelections = { ...prev };
+            if (module === 'person' && index !== null) { const newCharacters = [...newSelections.person.characters]; newCharacters[index] = { ...newCharacters[index], [option]: value }; newSelections.person = { ...newSelections.person, characters: newCharacters };
+            } else if (module === 'person' && option === 'characterCount') { const newCount = value; const currentCount = prev.person.characters.length; const newCharacters = [...prev.person.characters]; if (newCount > currentCount) { for (let i = 0; i < newCount - currentCount; i++) newCharacters.push(createDefaultCharacter()); } else { newCharacters.length = newCount; } newSelections.person = { ...prev.person, characterCount: newCount, characters: newCharacters };
+            } else if (module === 'object' && index !== null) { const newObjects = [...newSelections.object.objects]; newObjects[index] = { ...newObjects[index], [option]: value }; newSelections.object = { ...newSelections.object, objects: newObjects };
+            } else if (module === 'object' && option === 'objectCount') { const newCount = value; const currentCount = prev.object.objects.length; const newObjects = [...prev.object.objects]; if (newCount > currentCount) { for (let i = 0; i < newCount - currentCount; i++) newObjects.push(createDefaultObject()); } else { newObjects.length = newCount; } newSelections.object = { ...prev.object, objectCount: newCount, objects: newObjects };
+            } else { newSelections[module] = { ...newSelections[module], [option]: value }; }
+            return newSelections;
+        });
+    };
+    
+    // 處理 AI 全域生成
+    const handleGenerateAll = async () => {
+        if (!mainTheme.trim() || !selectedStyle) return;
+        setIsGeneratingAll(true); setError('');
+        try {
+            const suggestions = await getAiGlobalSuggestions(mainTheme, selectedStyle);
+            if (suggestions) {
+                const cleanSuggestions = {
+                    person: { characterCount: suggestions.person?.characterCount || 1, characters: (suggestions.person?.characters || [{}]).map(char => ({ ...createDefaultCharacter(), ...char, accessories: Array.isArray(char.accessories) ? char.accessories : [], })) },
+                    object: { objectCount: suggestions.object?.objectCount || 1, objects: (suggestions.object?.objects || [{}]).map(obj => ({ ...createDefaultObject(), ...obj, type: Array.isArray(obj.type) ? obj.type : [], features: Array.isArray(obj.features) ? obj.features : [], })) },
+                    scene: { category: suggestions.scene?.category || '', specific: suggestions.scene?.specific || '', time: suggestions.scene?.time || '', weather: suggestions.scene?.weather || '', atmosphere: Array.isArray(suggestions.scene?.atmosphere) ? suggestions.scene.atmosphere : [], isGenerating: false },
+                    advanced: { drawingTechnique: Array.isArray(suggestions.advanced?.drawingTechnique) ? suggestions.advanced.drawingTechnique : [], composition: Array.isArray(suggestions.advanced?.composition) ? suggestions.advanced.composition : [], photography: Array.isArray(suggestions.advanced?.photography) ? suggestions.advanced.photography : [], },
+                    output: { ...selections.output, aspectRatio: suggestions.output?.aspectRatio || promptModules.output.options.aspectRatio.default }
+                };
+                 if (cleanSuggestions.person.characters.length === 0) { cleanSuggestions.person.characters.push(createDefaultCharacter()); cleanSuggestions.person.characterCount = 1; }
+                 if (cleanSuggestions.object.objects.length === 0) { cleanSuggestions.object.objects.push(createDefaultObject()); cleanSuggestions.object.objectCount = 1; }
+                setSelections(cleanSuggestions);
+            } else { setError('AI 智慧生成失敗，請稍後再試。'); }
+        } catch (err) { setError(`發生錯誤: ${err.message}`); } finally { setIsGeneratingAll(false); }
+    };
+
+    // 自動生成提示詞 (修正)
+    useEffect(() => {
+        const { person, object: o, scene: s, advanced: adv, output: out } = selections;
+
+        // --- English Prompt ---
+        const getAspectRatioTextEn = (ar) => {
+            if (!ar) return '';
+            const [w, h] = ar.split(':').map(Number);
+            if (isNaN(w) || isNaN(h) || h === 0) return 'A square 1:1 aspect ratio image.';
+            const ratio = w / h;
+            if (ratio > 1.2) return `A cinematic widescreen ${ar} aspect ratio image.`;
+            if (ratio < 0.8) return `A vertical portrait ${ar} aspect ratio image.`;
+            return `A square ${ar} aspect ratio image.`;
+        };
+
+        const personDescriptionsEn = person.characters.map(p => [promptModules.person.options.gender.en[p.gender] || p.gender, promptModules.person.options.age.en[p.age] || p.age, p.role, p.hairStyle, p.hairColor && `${p.hairColor} hair`, p.skinColor && `${p.skinColor} skin`, p.eyes, p.accessories?.length > 0 ? `wearing ${p.accessories.join(' and ')}` : null, promptModules.person.options.expression.en[p.expression] || p.expression, promptModules.person.options.pose.en[p.pose] || p.pose].filter(Boolean).join(', '));
+        const personPartsEn = personDescriptionsEn.join(' and ');
+        const objectDescriptionsEn = o.objects.map(obj => [obj.name, obj.type.join(', '), obj.features.join(' ')].filter(Boolean).join(', ')).filter(Boolean);
+        const objectPartEn = objectDescriptionsEn.join(' and ');
+        const scenePartEn = [s.specific || s.category, s.time, s.weather, s.atmosphere.join(' ') + (s.atmosphere.length > 0 ? ' atmosphere' : '')].filter(Boolean).join(', ');
+        const advancedPartsEn = [adv.drawingTechnique.join(', '), adv.composition.join(', '), adv.photography.join(', ')].filter(Boolean).join(', ');
+        
+        const textPartEn = out.textOverlay !== '不加文字' && out.customText ? `typography, text overlay that says "${out.customText}"` : '';
+
+        const qualityEnhancer = styleEnhancers[selectedStyle?.name] || styleEnhancers['default'];
+        const aspectRatioTextEn = getAspectRatioTextEn(out.aspectRatio);
+        
+        const corePromptPartsEn = [aspectRatioTextEn, selectedStyle?.en, personPartsEn, objectPartEn ? `with ${objectPartEn}` : '', scenePartEn ? `in a scene of ${scenePartEn}` : '', advancedPartsEn, textPartEn, qualityEnhancer].filter(p => p && p.trim() !== '');
+        setFinalPrompt(corePromptPartsEn.join(', '));
+
+        // --- Chinese Prompt ---
+        const getAspectRatioTextZh = (ar) => ar ? `[長寬比 ${ar}]` : '';
+        const personDescriptionsZh = person.characters.map(p => [p.gender, p.age, p.role, p.hairStyle, p.hairColor, p.skinColor, p.eyes, p.accessories.length > 0 ? `穿戴著 ${p.accessories.join('和')}` : null, p.expression, p.pose].filter(Boolean).join('，'));
+        const personPartsZh = personDescriptionsZh.join(' 以及 ');
+        const objectDescriptionsZh = o.objects.map(obj => [obj.name, obj.type.join('、'), obj.features.join('、')].filter(Boolean).join('，')).filter(Boolean);
+        const objectPartZh = objectDescriptionsZh.join(' 以及 ');
+        const scenePartZh = [s.specific || s.category, s.time, s.weather, s.atmosphere.join(' ') + (s.atmosphere.length > 0 ? '氛圍' : '')].filter(Boolean).join('，');
+        const advancedPartsZh = [adv.drawingTechnique.join('、'), adv.composition.join('、'), adv.photography.join('、')].filter(Boolean).join('，');
+        
+        const textPartZh = out.textOverlay !== '不加文字' && out.customText ? `[文字: "${out.customText}"]` : '';
+
+        const stylePartZh = selectedStyle ? `[風格: ${selectedStyle.name}]` : '';
+        const aspectRatioPartZh = getAspectRatioTextZh(out.aspectRatio);
+
+        const corePromptPartsZh = [aspectRatioPartZh, stylePartZh, personPartsZh, objectPartZh ? `帶著 ${objectPartZh}` : '', scenePartZh ? `在 ${scenePartZh} 的場景中` : '', advancedPartsZh, textPartZh].filter(p => p && p.trim() !== '');
+        setFinalPromptZh(corePromptPartsZh.join('； '));
+
+    }, [selections, selectedStyle]);
+    
+    const handleGenerateImages = async () => {
+        if (!finalPrompt || finalPrompt.trim() === '') { setError('提示詞是空的，請先完成主題設定與風格選擇！'); return; }
+        setIsLoading(true); setError(''); setGeneratedImages([]);
+        try {
+            const images = await generateImagesAPI(finalPrompt, 4);
+            setGeneratedImages(images);
+        } catch (err) { setError(`圖片生成失敗: ${err.message}`); } finally { setIsLoading(false); }
+    };
+
+    const handleRegenerateSingleImage = async (index) => {
+        if (!finalPrompt || regeneratingIndex !== null) return;
+        setRegeneratingIndex(index);
+        try {
+            const newImages = await generateImagesAPI(finalPrompt, 1);
+            if (newImages.length > 0) {
+                setGeneratedImages(prev => {
+                    const updatedImages = [...prev];
+                    updatedImages[index] = newImages[0];
+                    return updatedImages;
+                });
+            }
+        } catch (err) {
+            setError(`單張圖片重新生成失敗: ${err.message}`);
+        } finally {
+            setRegeneratingIndex(null);
+        }
+    };
+    
+    const handleDownloadAll = () => {
+        generatedImages.forEach((src, index) => {
+            const link = document.createElement('a');
+            link.href = src;
+            const themePart = mainTheme.replace(/\s+/g, '_').substring(0, 20);
+            const stylePart = selectedStyle?.name.replace(/\s+/g, '_');
+            link.download = `TONY_STUDIO_${themePart}_${stylePart}_${index + 1}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    };
+
+    const handleCopyPrompt = (lang) => {
+        const textToCopy = lang === 'en' ? finalPrompt : finalPromptZh;
+        if (!textToCopy) return;
+        
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        textArea.style.position = "fixed";
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            const successful = document.execCommand('copy');
+            if(successful){
+                setCopySuccess(lang);
+                setTimeout(() => setCopySuccess(''), 2000);
+            } else {
+                 setError('複製失敗！');
+            }
+        } catch (err) {
+            setError('複製失敗！');
+        }
+
+        document.body.removeChild(textArea);
+    };
+
+    // 渲染
+    return (
+         <>
+            <style>{`body { font-family: 'Inter', 'Microsoft JhengHei', sans-serif; background-color: #111827; }`}</style>
+            <div className="bg-gray-900 text-gray-200 min-h-screen p-4 sm:p-8">
+                <AnimatePresence>{isGeneratingAll && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex flex-col items-center justify-center"><div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-yellow-400 mb-4"></div><h2 className="text-2xl font-bold text-yellow-300">AI 魔法構思中...</h2><p className="text-gray-300 mt-2 max-w-md text-center">正在為您「{mainTheme}」生成完整的設定</p></motion.div>)}</AnimatePresence>
+                <div className="max-w-7xl mx-auto">
+                    <header className="text-center my-8 sm:my-10">
+                        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-yellow-400 tracking-tight" style={{fontFamily: "'Microsoft YaHei', sans-serif"}}>AI生圖提示詞的魔法世界</h1>
+                        <p className="mt-4 text-xl sm:text-3xl text-gray-300 font-bold">
+                            <span>TONY STUDIO</span>
+                            <span className="block sm:inline sm:ml-2">(TONY楊老師的學員專屬)</span>
+                        </p>
+                    </header>
+                    
+                    <div className="bg-gray-800/60 border border-yellow-500/30 rounded-2xl p-6 sm:p-8 shadow-xl mb-12 max-w-6xl mx-auto space-y-8">
+                        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 text-center">創意起點 (Creative Starting Point)</h2>
+                        <div>
+                            <h3 className="text-lg sm:text-xl font-bold text-yellow-300 mb-4"><span className="bg-yellow-400 text-black rounded-full px-3 py-1 mr-2 font-bold">1</span> 輸入主題 (Enter Theme)</h3>
+                            <input type="text" value={mainTheme} onChange={(e) => setMainTheme(e.target.value)} placeholder="例如：一位在賽博龐克雨夜中獨行的精靈偵探" className="w-full bg-gray-900/70 border border-gray-600 rounded-lg py-3 px-5 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-white text-base sm:text-lg placeholder-gray-500"/>
+                        </div>
+                        <StyleSelector selectedStyle={selectedStyle} onSelect={setSelectedStyle} />
+                        <div className="text-center pt-4">
+                            <button onClick={handleGenerateAll} disabled={isGeneratingAll || !mainTheme.trim() || !selectedStyle} className="w-full sm:w-auto flex items-center justify-center gap-3 bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 px-8 sm:py-4 sm:px-10 rounded-lg transition-all duration-300 text-lg sm:text-xl shadow-lg hover:shadow-yellow-400/30 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed mx-auto">
+                                <WandIcon/>{isGeneratingAll ? 'AI 魔法構思中...' : '啟用 AI 智慧設定'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <main>
+                        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6">細節微調 (Fine-Tuning)</h2>
+                        <div className="grid lg:grid-cols-3 gap-6 sm:gap-8 mb-12">
+                            {/* Person Module */}
+                            <ModuleCard title={promptModules.person.title}>
+                                <TeacherGuide text="先決定人數，再細膩刻畫每個角色的特徵，AI更能精準生成您腦中的畫面。" />
+                                <FieldWrapper title={promptModules.person.options.characterCount.title} description={promptModules.person.options.characterCount.description}><RadioGroup items={promptModules.person.options.characterCount.items} selected={selections.person.characterCount} onChange={value => handleStateChange('person', 'characterCount', value)} /></FieldWrapper><hr className="border-gray-700" />{selections.person.characters.map((char, index) => (<div key={index} className="relative border border-gray-700 rounded-lg p-4 space-y-4 bg-gray-900/30 overflow-hidden">
+                                    <AnimatePresence>
+                                        {char.isGenerating && (
+                                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                                className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400"></div>
+                                                <p className="text-yellow-300 mt-3 text-sm font-semibold">AI 建議生成中...</p>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                    <h4 className="font-bold text-lg text-yellow-300">人物 {index + 1}</h4>
+                                    {Object.entries(promptModules.person.options).map(([key, config]) => { if (key === 'characterCount') return null; return (<FieldWrapper key={key} title={config.title} description={config.description}>{config.type === 'dropdown' && <Dropdown items={config.items} selected={char[key]} onChange={value => handleStateChange('person', key, value, index)} placeholder={config.placeholder} custom={config.custom} />}{config.type === 'tags' && <TagInput items={config.items} selected={char[key]} onChange={value => handleStateChange('person', key, value, index)} placeholder={config.placeholder} limit={config.limit} />}</FieldWrapper>)})}
+                                </div>
+                                ))}</ModuleCard>
+                            {/* Object Module */}
+                            <ModuleCard title={promptModules.object.title}>
+                                <TeacherGuide text="明確的物品名稱是關鍵第一步，AI會根據名稱智慧推薦類型與特徵，加速您的創作流程。" />
+                                <FieldWrapper title={promptModules.object.options.objectCount.title} description={promptModules.object.options.objectCount.description}>
+                                    <RadioGroup items={promptModules.object.options.objectCount.items} selected={selections.object.objectCount} onChange={value => handleStateChange('object', 'objectCount', value)} />
+                                </FieldWrapper>
+                                <hr className="border-gray-700" />
+                                {selections.object.objects.map((obj, index) => {
+                                    const { name, type, features } = promptModules.object.options;
+                                    return (
+                                    <div key={index} className="relative border border-gray-700 rounded-lg p-4 space-y-4 bg-gray-900/30 overflow-hidden">
+                                        <AnimatePresence>
+                                            {obj.isGenerating && (
+                                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                                    className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg">
+                                                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400"></div>
+                                                    <p className="text-yellow-300 mt-3 text-sm font-semibold">AI 建議生成中...</p>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                        <h4 className="font-bold text-lg text-yellow-300">物品 {index + 1}</h4>
+                                        <FieldWrapper key="name" title={name.title} description={name.description}>
+                                            <input type="text" placeholder={name.placeholder} value={obj.name} 
+                                                onChange={e => handleStateChange('object', 'name', e.target.value, index)}
+                                            className="w-full bg-gray-900/70 border border-gray-600 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-white"/>
+                                        </FieldWrapper>
+                                        <FieldWrapper key="type" title={type.title} description={type.description}>
+                                             <TagInput items={type.items} selected={obj.type} onChange={value => handleStateChange('object', 'type', value, index)} placeholder={type.placeholder} limit={type.limit} />
+                                        </FieldWrapper>
+                                        <FieldWrapper key="features" title={features.title} description={features.description}>
+                                             <TagInput items={features.items} selected={obj.features} onChange={value => handleStateChange('object', 'features', value, index)} placeholder={features.placeholder} limit={features.limit} />
+                                        </FieldWrapper>
+                                    </div>
+                                )})}
+                            </ModuleCard>
+                            {/* Scene Module */}
+                            <ModuleCard title={promptModules.scene.title}>
+                                <TeacherGuide text="從大的場景類別著手，AI會為您聯想相關的細節，讓您的故事場景更豐富、更具體。" />
+                                <AnimatePresence>
+                                    {selections.scene.isGenerating && (
+                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                            className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-2xl">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400"></div>
+                                            <p className="text-yellow-300 mt-3 text-sm font-semibold">AI 場景建議生成中...</p>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                                {Object.entries(promptModules.scene.options).map(([key, config]) => (<FieldWrapper key={key} title={config.title} description={config.description}>{config.type === 'dropdown' && <Dropdown items={config.items} selected={selections.scene[key]} onChange={value => handleStateChange('scene', key, value)} placeholder={config.placeholder} custom={config.custom} />}{config.type === 'tags' && <TagInput items={config.items} selected={selections.scene[key]} onChange={value => handleStateChange('scene', key, value)} placeholder={config.placeholder} limit={config.limit} />}</FieldWrapper>))}
+                            </ModuleCard>
+                        </div>
+                        <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 mb-10">
+                           <ModuleCard title={promptModules.advanced.title}>
+                                <TeacherGuide text="善用這些專業術語，能讓您的作品在藝術性與專業度上提升一個檔次，彷彿大師親手操刀。" />
+                               {Object.entries(promptModules.advanced.options).map(([key, config]) => (<FieldWrapper key={key} title={config.title} description={config.description}><TagInput items={config.items} selected={selections.advanced[key]} onChange={value => handleStateChange('advanced', key, value)} placeholder={config.placeholder} limit={config.limit} /></FieldWrapper>))}
+                           </ModuleCard>
+                           <ModuleCard title={promptModules.output.title}>
+                                <FieldWrapper key="aspectRatio" title={promptModules.output.options.aspectRatio.title} description={promptModules.output.options.aspectRatio.description}>
+                                    <Dropdown items={promptModules.output.options.aspectRatio.items} selected={selections.output.aspectRatio} onChange={value => handleStateChange('output', 'aspectRatio', value)} placeholder={promptModules.output.options.aspectRatio.placeholder} custom={promptModules.output.options.aspectRatio.custom} />
+                                </FieldWrapper>
+                                <FieldWrapper key="textOverlay" title={promptModules.output.options.textOverlay.title} description={promptModules.output.options.textOverlay.description}>
+                                    <RadioGroup items={promptModules.output.options.textOverlay.items} selected={selections.output.textOverlay} onChange={value => handleStateChange('output', 'textOverlay', value)} />
+                                </FieldWrapper>
+                                <AnimatePresence>
+                                    {(selections.output.textOverlay === '自行撰寫' || selections.output.textOverlay === 'AI自動生成') && (
+                                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                            <FieldWrapper key="customText" title={promptModules.output.options.customText.title} description={promptModules.output.options.customText.description}>
+                                                <input type="text" 
+                                                    placeholder={selections.output.isGeneratingText ? 'AI 文字生成中...' : promptModules.output.options.customText.placeholder} 
+                                                    value={selections.output.customText} 
+                                                    onChange={e => handleStateChange('output', 'customText', e.target.value)}
+                                                    disabled={selections.output.isGeneratingText}
+                                                    className="w-full bg-gray-900/70 border border-gray-600 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-white disabled:bg-gray-800"
+                                                />
+                                            </FieldWrapper>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                           </ModuleCard>
+                        </div>
+                        
+                        <IntellectualPropertyNotice />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-10">
+                            <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 shadow-inner relative">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h3 className="text-lg font-semibold text-gray-300">魔法提示詞組合 (API 使用)</h3>
+                                    <button onClick={() => handleCopyPrompt('en')} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-sm py-1 px-3 rounded-lg transition-colors duration-200">
+                                        <ClipboardIcon />
+                                        {copySuccess === 'en' ? '已複製！' : '複製'}
+                                    </button>
+                                </div>
+                                <p className="text-yellow-300 font-mono text-sm sm:text-base leading-relaxed h-24 overflow-y-auto pr-2">{finalPrompt || <span className="text-gray-500">請在上方完成「創意起點」設定...</span>}</p>
+                            </div>
+                            <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 shadow-inner relative">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h3 className="text-lg font-semibold text-gray-300">中文提示詞結構 (學習用)</h3>
+                                    <button onClick={() => handleCopyPrompt('zh')} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-sm py-1 px-3 rounded-lg transition-colors duration-200">
+                                        <ClipboardIcon />
+                                        {copySuccess === 'zh' ? '已複製！' : '複製'}
+                                    </button>
+                                </div>
+                                <p className="text-yellow-300 font-mono text-sm sm:text-base leading-relaxed h-24 overflow-y-auto pr-2">{finalPromptZh || <span className="text-gray-500">請在上方完成「創意起點」設定...</span>}</p>
+                            </div>
+                        </div>
+
+                        <AnimatePresence>{error && <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="bg-red-500/20 border border-red-500 text-red-300 px-4 py-3 rounded-lg text-center mb-6">{error}</motion.div>}</AnimatePresence>
+                        
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+                            {generatedImages.length === 0 ? (
+                                <button onClick={handleGenerateImages} disabled={isLoading} className="w-full sm:w-auto flex items-center justify-center gap-3 bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 px-12 rounded-lg transition-all duration-300 text-lg shadow-lg hover:shadow-yellow-400/30 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed">
+                                    {isLoading ? (<><div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-black"></div><span>魔法繪製中...</span></>) : (<><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg><span>一鍵生成 (4張)</span></>)}
+                                </button>
+                            ) : (
+                                <>
+                                    <button onClick={handleGenerateImages} disabled={isLoading}  className="w-full sm:w-auto flex items-center justify-center gap-3 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-12 rounded-lg transition-all duration-300 text-lg shadow-lg hover:shadow-green-500/30 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed">
+                                        {isLoading && regeneratingIndex === null ? (<><div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div><span>繪製中...</span></>) : (<><RefreshIcon /><span>重新生成全部</span></>)}
+                                    </button>
+                                    <button onClick={handleDownloadAll} disabled={isLoading} className="w-full sm:w-auto flex items-center justify-center gap-3 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-12 rounded-lg transition-all duration-300 text-lg shadow-lg hover:shadow-blue-500/30 transform hover:scale-105 disabled:bg-gray-600">
+                                        <DownloadIcon />
+                                        <span>一鍵下載</span>
+                                    </button>
+                                </>
+                            )}
+                        </div>
+
+                        <ImageGrid images={generatedImages} isLoading={isLoading} onRegenerate={handleRegenerateSingleImage} regeneratingIndex={regeneratingIndex} aspectRatio={selections.output.aspectRatio} />
+                        
+                        <footer className="text-center mt-20 pt-10 border-t border-gray-700">
+                            <p className="text-gray-400 font-semibold">創作者：TONY YANG 楊文澤 老師</p>
+                            <p className="text-gray-500 text-sm mt-4 max-w-3xl mx-auto">溫馨提醒：發揮您的創意與學習精神，跟著TONY楊文澤老師一起學，生成式AI的圖像生成提示詞創作，一起進入TONY老師的AI魔法世界!</p>
+                        </footer>
+                    </main>
+                </div>
+            </div>
+        </>
+    );
+};
+
+const ImageGrid = ({ images, isLoading, onRegenerate, regeneratingIndex, aspectRatio }) => {
+    const sampleCount = 4;
+    const getAspectRatioClass = (ar) => {
+        if (!ar) return 'aspect-[9/16]'; // Default aspect ratio
+        const [w, h] = ar.split(':').map(Number);
+        if (isNaN(w) || isNaN(h) || h === 0) return 'aspect-square';
+
+        const ratio = w / h;
+        if (ratio > 1.2) return 'aspect-video'; // for 16:9, 3:2
+        if (ratio < 0.8) return 'aspect-[9/16]'; // for 9:16
+        return 'aspect-square'; // for 1:1
+    };
+
+    const aspectRatioClass = getAspectRatioClass(aspectRatio);
+
+    return (
+    <div className="mt-10">
+        <AnimatePresence>{(isLoading || images.length > 0) && (<motion.h2 className="text-2xl font-bold text-white text-center mb-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>魔法生成結果</motion.h2>)}</AnimatePresence>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            {isLoading && [...Array(sampleCount)].map((_, i) => (<motion.div key={i} className={`${aspectRatioClass} bg-gray-800 rounded-lg flex items-center justify-center animate-pulse`} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }}><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400"></div></motion.div>))}
+            <AnimatePresence>
+                {!isLoading && images.map((src, i) => (
+                    <motion.div key={src + i} className={`relative group ${aspectRatioClass} rounded-lg overflow-hidden shadow-2xl border-2 border-transparent hover:border-yellow-400 transition-all`}
+                        initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.3, delay: i * 0.1 }} layout>
+                        <img src={src} alt={`Generated image ${i + 1}`} className="w-full h-full object-cover" />
+                         <AnimatePresence>
+                            {regeneratingIndex === i && (
+                                <motion.div initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}} className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400"></div>
+                                </motion.div>
+                            )}
+                         </AnimatePresence>
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => onRegenerate(i)} disabled={regeneratingIndex !== null}
+                                className="p-2 bg-black/60 hover:bg-black/80 rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                                <RefreshIcon />
+                            </button>
+                        </div>
+                    </motion.div>
+                ))}
+            </AnimatePresence>
+        </div>
+    </div>
+)};
+
+export default App;
+
